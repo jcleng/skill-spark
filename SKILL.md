@@ -7,24 +7,27 @@ description: 作为 spark-x2.5 小模型的前置提示词与行为约束。汇�
 
 > 本文档对 **spark-x2.5 小模型** 同时承担两个职责：**(1)** 汇总通过 **mcp__mcphub** 工具集使用 **钉钉通知**、**服务器时间** 与 **spreadsheet** 的调用方式与实例；**(2)** 作为小模型的**前置约束提示词**，规定其默认工作目录、工具调用、失败重试、安全边界与输出反馈等强制规范。
 >
-> ⚠️ 小模型常见的错误（臆造工具名、盲目重试、用错目录、忽略 `isError`、静默失败、编造返回结果）在本文件中被显式禁止。加载本技能后，请**先阅读第六章「操作规范与限制」**，并在每次调用前遵守。
+> ⚠️ 小模型常见的错误（臆造工具名、盲目重试、用错目录、忽略 `isError`、静默失败、编造返回结果、思考陷入循环）在本文件中被显式禁止。加载本技能后，请**先阅读第五章「操作规范与限制」**，并在每次调用前遵守。
 
 ---
 
 ## 一、工具概览
 
-当前使用的 mcp__mcphub 工具共 8 个，其中与本次需求相关的工具如下：
+当前 `mcp__mcphub` 命名空间下的工具共 **9 个**（以 `ALL_TOOLS` / `describeNamespace('mcp__mcphub')` 实测为准，见第六章）：
 
 | 工具名称 | 工具功能 | 用途 |
 | --- | --- | --- |
 | `mcp__mcphub__tools_dingtalk_notify` | 发送钉钉机器人文本通知 | 向钉钉推送通知文本 |
-| `mcp__mcphub__tools_spreadsheet_create` | 创建空的 xlsx 文件 | 生成 Excel 文件 |
-| `mcp__mcphub__tools_php_execute` | 执行 PHP 代码/脚本文件 | 执行后端脚本 |
-| `mcp__mcphub__tools_spreadsheet_read` | 读取 xlsx 文件单元格数据 | 读取 Excel 数据 |
 | `mcp__mcphub__tools_get_current_time` | 获取当前服务器时间 | 获取时间信息 |
-| `mcp__mcphub__tools_spreadsheet_to_html` | 将 xlsx 转换为 HTML 文件 | 生成 HTML |
+| `mcp__mcphub__tools_spreadsheet_create` | 创建空的 xlsx 文件 | 生成 Excel 文件 |
+| `mcp__mcphub__tools_spreadsheet_read` | 读取 xlsx 文件单元格数据 | 读取 Excel 数据 |
 | `mcp__mcphub__tools_spreadsheet_modify` | 修改 xlsx 指定单元格内容并保存 | 编辑 Excel 内容 |
+| `mcp__mcphub__tools_spreadsheet_to_html` | 将 xlsx 转换为 HTML 文件 | 生成 HTML |
 | `mcp__mcphub__tools_spreadsheet_to_pdf` | 将 xlsx 转换为 PDF 文件 | 生成 PDF |
+| `mcp__mcphub__tools_php_execute` | 执行 PHP 代码/脚本文件 | 执行后端脚本 |
+| `mcp__mcphub__sequential_thinking_sequentialthinking` | 结构化多步思考（thought/thoughtNumber/totalThoughts/nextThoughtNeeded 等） | 复杂问题分步推理 |
+
+> ⚠️ 工具列表可能随服务端配置变化。**以运行时 `ALL_TOOLS` 实测为准**，本表仅为当前快照；调用前若不确定，先按第六章检索确认。
 
 ---
 
@@ -213,58 +216,74 @@ const result = await tools.mcp__mcphub__tools_get_current_time({});
 
 ## 六、工具列表获取方法
 
----
-
-## 六、工具列表获取方法
+> ⚠️ 本章返回值结构以 `codemode` 实际 API 为准（见 pi 文档 `docs/codemode.md`）。**不要臆造返回结构**，下面标注了每个 API 的真实类型。
 
 ### 6.1 获取工具列表
 
-通过 `codemode` 脚本调用工具，可按主题检索工具列表，具体获取方法如下：
-
-| 获取方式 | 方法 | 返回内容 |
+| 获取方式 | 方法 | 返回内容（真实结构） |
 | --- | --- | --- |
-| 按主题检索列表 | `searchTools(query)` | 该主题下的全部工具，格式 `{ name, description }[]` |
-| 按名称获取描述 | `describeTool(name)` | 工具的详细描述与 TypeScript 声明 |
-| 全局工具列表 | `ALL_TOOLS` | 所有可调用工具（含描述中未列出的） |
+| **全部工具** | `ALL_TOOLS` | `{ name, description }[]` 数组，**所有可调用工具**（含描述中未列出的）；要「获取所有 MCP 工具」就过滤它 |
+| 按相关度检索 | `searchTools(query, { limit?, namespace? })` | `{ name, description }[]` 数组，按 BM25 排序，**默认只返回 8 条**（可用 `limit` 调大），**不是「全部工具」** |
+| 按名称获取描述 | `describeTool(name)` | 该工具的**描述 + TypeScript 声明文本**（字符串）；工具不存在时返回 `undefined` |
+| 按命名空间获取 | `describeNamespace(name)` | `{ name, description?, instructions?, tools }`，如 `mcp__mcphub` 整体信息 |
 
 ### 6.2 获取工具信息示例
 
 ```js
-// 按主题检索工具列表
-const result = await searchTools('mcp__mcphub');
-// 结果: [{ name, description }, ...]
+// 1) 获取「所有」工具：直接遍历 ALL_TOOLS（它是数组，不是 { tools: [...] }）
+const all = ALL_TOOLS;                       // { name, description }[]
+console.log('工具总数:', all.length);
 
-// 获取单个工具描述
-const tool = await describeTool('mcp__mcphub__tools_dingtalk_notify');
-// 结果: { name, description, ... }
+// 2) 只取某个命名空间（如 mcp__mcphub）的全部工具
+const mcpTools = ALL_TOOLS.filter(t => t.name.startsWith('mcp__mcphub'));
+mcpTools.forEach(t => console.log(t.name, '|', t.description));
 
-// 获取命名空间整体信息
-const ns = await describeNamespace('mcp__mcphub');
+// 3) 按关键词检索（相关度排序，默认最多 8 条，可用 limit 放宽）
+const hits = await searchTools('mcp__mcphub', { limit: 50 });  // { name, description }[]
+
+// 4) 获取单个工具的完整描述与签名（字符串；不存在则 undefined）
+const desc = await describeTool('mcp__mcphub__tools_dingtalk_notify');
+console.log(desc);
+
+// 5) 获取命名空间整体信息
+const ns = await describeNamespace('mcp__mcphub');  // { name, description?, instructions?, tools }
 ```
 
 ### 6.3 工具列表获取实例
 
-#### 实例 1：按主题获取工具列表
+#### 实例 1：获取所有 MCP 工具（推荐）
 ```js
-const result = await searchTools('mcp__mcphub');
+// ALL_TOOLS 是数组：{ name, description }[]
+const mcpTools = ALL_TOOLS.filter(t => t.name.startsWith('mcp__mcphub'));
 
-if (result.tools) {
-  console.log('获取到工具数量:', result.tools.length);
-  result.tools.forEach(t => console.log(t.name, '|', t.description));
-}
+console.log('获取到工具数量:', mcpTools.length);
+mcpTools.forEach(t => console.log(t.name, '|', t.description));
 ```
 
-#### 实例 2：获取单个工具描述
+#### 实例 2：按关键词检索（注意默认 limit=8）
 ```js
-const tool = await describeTool('mcp__mcphub__tools_dingtalk_notify');
-if (tool) {
-  console.log(tool.name, '|', tool.description);
+// searchTools 返回数组，不是 { tools: [...] }；默认只返回 8 条
+const hits = await searchTools('mcp__mcphub', { limit: 50 });
+
+console.log('命中数量:', hits.length);
+hits.forEach(t => console.log(t.name, '|', t.description));
+```
+
+#### 实例 3：获取单个工具描述
+```js
+// describeTool 返回「描述 + TS 声明」字符串；不存在时为 undefined
+const desc = await describeTool('mcp__mcphub__tools_dingtalk_notify');
+if (desc) {
+  console.log(desc);
+} else {
+  console.log('工具不存在（可能已下线或改名），请用 ALL_TOOLS/searchTools 重新确认');
 }
 ```
 
 ### 6.4 注意事项
 
-- 获取工具列表时结合需求，按主题检索即可，无需一次性全部获取。
-- 获取单个工具描述可用于校验工具功能与调用签名，便于后续调用。
+- **`searchTools` 默认只返回 8 条且按相关度排序，不等于「全部工具」**；要拿全部请用 `ALL_TOOLS`（可再按 `name` 前缀过滤命名空间）。
+- **返回值都是数组**（`ALL_TOOLS`、`searchTools`），**没有 `result.tools` 这一层**；`describeTool` 返回的是描述+签名文本（字符串），**不要假设它有 `.name` / `.description` 字段**。
+- `ALL_TOOLS` / `searchTools` / `describeTool` / `describeNamespace` 是 `codemode` 的**全局函数/变量**，不是 `tools` 下的工具：`ALL_TOOLS` 直接引用，其余 `await` 调用；只有真正的工具调用才走 `await tools.<工具名>(args)`。
 - 工具名称中非标识符字符会被自动转为 `_`（如 `mcp__dev-radius__search` 转为 `mcp__dev_radius__search`），调用时需按实际名称调用。
-- 工具调用通过 `codemode` 脚本的 `tools.<工具名>(args)` 方式，参数需与工具签名对应。
+- 调用失败或怀疑工具「不存在」时，先用 `ALL_TOOLS` / `searchTools` 确认工具是否仍存在，再决定是否重试（见 5.3）。
