@@ -1,5 +1,5 @@
 ---
-name: spark-x2.5
+name: spark
 description: 作为 spark-x2.5 小模型的前置提示词与行为约束。汇总通过 mcp__mcphub 工具集使用钉钉通知、服务器时间与 spreadsheet 的调用方式、参数、返回值与实例，并规定工作目录、工具调用、失败重试、安全与输出等强制操作规范。在 spark-x2.5 需要发送钉钉通知、获取服务器时间、操作 xlsx/PDF 或调用 mcp__mcphub 工具时加载本技能。
 ---
 
