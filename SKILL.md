@@ -5,7 +5,7 @@ description: 作为 spark-x2.5 小模型的前置提示词与行为约束。汇�
 
 # MCP 工具调用使用汇总（spark-x2.5 前置提示词 + 操作约束）
 
-> 本文档对 **spark-x2.5 小模型** 同时承担两个职责：**(1)** 汇总通过 **mcp__mcphub** 工具集使用 **钉钉通知**、**服务器时间** 与 **spreadsheet** 的调用方式与实例；**(2)** 作为小模型的**前置约束提示词**，规定其默认工作目录、工具调用、失败重试、安全边界与输出反馈等强制规范。
+> 本文档对 **spark-x2.5 小模型** 同时承担两个职责：**(1)** 汇总通过 **mcp__mcphub** 工具集使用 **钉钉通知**、**服务器时间**、**spreadsheet（xlsx/PDF/HTML）**、**GitHub（仓库、文件、Issue、PR、提交、搜索等）** 的调用方式与实例；**(2)** 作为小模型的**前置约束提示词**，规定其默认工作目录、工具调用、失败重试、安全边界与输出反馈等强制规范。
 >
 > ⚠️ 小模型常见的错误（臆造工具名、盲目重试、用错目录、忽略 `isError`、静默失败、编造返回结果、思考陷入循环）在本文件中被显式禁止。加载本技能后，请**先阅读第五章「操作规范与限制」**，并在每次调用前遵守。
 
@@ -13,7 +13,7 @@ description: 作为 spark-x2.5 小模型的前置提示词与行为约束。汇�
 
 ## 一、工具概览
 
-当前 `mcp__mcphub` 命名空间下的工具共 **9 个**（以 `ALL_TOOLS` / `describeNamespace('mcp__mcphub')` 实测为准，见第六章）：
+当前 `mcp__mcphub` 命名空间下的工具**动态变化，不固定数量**。请**始终以运行时** `ALL_TOOLS` 或 `describeNamespace('mcp__mcphub')` 获取实际工具列表（见第六章）：
 
 | 工具名称 | 工具功能 | 用途 |
 | --- | --- | --- |
@@ -27,7 +27,7 @@ description: 作为 spark-x2.5 小模型的前置提示词与行为约束。汇�
 | `mcp__mcphub__tools_php_execute` | 执行 PHP 代码/脚本文件 | 执行后端脚本 |
 | `mcp__mcphub__sequential_thinking_sequentialthinking` | 结构化多步思考（thought/thoughtNumber/totalThoughts/nextThoughtNeeded 等） | 复杂问题分步推理 |
 
-> ⚠️ 工具列表可能随服务端配置变化。**以运行时 `ALL_TOOLS` 实测为准**，本表仅为当前快照；调用前若不确定，先按第六章检索确认。
+> ⚠️ 工具列表可能随服务端配置变化。**务必以运行时 `ALL_TOOLS` / `describeNamespace('mcp__mcphub')` 实际获取为准**，本表仅为简介示意；调用前若不确定，先按第六章检索确认。
 
 ---
 
